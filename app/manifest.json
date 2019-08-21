@@ -1,0 +1,40 @@
+{
+    "manifest_version": 2,
+    "name": "FOI Athena Extension",
+    "version": "0.3",
+    "background": {
+        "scripts": [
+            "background.js"
+        ],
+        "persistent": false
+    },
+    "permissions": ["tabs", "storage"],
+    "icons": {
+        "16": "images/logo16.png",
+        "48": "images/logo48.png",
+        "128": "images/logo128.png",
+        "256": "images/logo256.png"
+    },
+    "content_scripts": [
+        {
+            "matches":["https://athenanet.athenahealth.com/*"],
+            "run_at": "document_idle",
+            "js": ["athenanet/contentScript.js"],
+            "all_frames": true
+        },
+        {
+            "matches":["https://pacs.floridaortho.com/*"],
+            "run_at": "document_idle",
+            "js": ["medview/contentScript.js"]
+        }
+    ],
+    "browser_action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "images/logo16.png",
+            "48": "images/logo48.png",
+            "128": "images/logo128.png",
+            "256": "images/logo256.png"
+        }
+    }
+}
