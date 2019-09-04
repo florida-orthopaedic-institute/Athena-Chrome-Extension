@@ -7,6 +7,8 @@ const ATHENA_MATCH_URL = ATHENA_URL + "*";
 const MEDVIEW_STUDY_URL = MEDVIEW_URL + "accessnet/imageweb/ExamLoad.aspx?ExamID=";
 const MEDVIEW_PATIENT_URL = MEDVIEW_URL + "accessnet/imageweb/ExamLoad.aspx?PatientID=";
 
+const MEDVIEW_API_URL = 'https://pacs.floridaortho.com/accessnet/api/ExamApi/ExamSearch?PatientId=';
+
 var _studyId = null;  //The Current Study Loaded in Medview
 var _patientId = null; //The Current Patient Loaded in Medview and Athena
 var _medviewTab = null;
@@ -14,20 +16,21 @@ var _athenaTab = null;
 var _enabled = true; //Boolean that controls if navigation occurs
 
 
+///On receipt of a enabled storage request, update the local variable.
 chrome.storage.sync.get(['enabled'], function(result) {
   log("The plugin is currently " + result ? "enabled" : "disabled");
   _enabled = result;
 });
 
+//When a chrome tab is removed
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  //check if it is a medview tab or athena tab
   if (_medviewTab && tabId === _medviewTab.id) {
     log("Medview Tab Closed, updating storage");
     _medviewTab = null;
     _patientId = null;
     _studyId = null;
-  }
-
-  if (_athenaTab && tabId === _athenaTab.id) {
+  } else if (_athenaTab && tabId === _athenaTab.id) {
     log("Athena Tab Closed, updating storage");
     _athenaTab = null;
 
@@ -39,9 +42,11 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   }
 });
 
+//When a message is received by the background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   log("Received message from " + (sender.tab ? sender.tab.url : "the extension"));
 
+  //If it is an enabled update
   if (typeof request.enabled === 'boolean') {
     log("Changing Enabled State to " + request.enabled);
     chrome.storage.local.set({enabled: request.enabled}, function() {
@@ -50,23 +55,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
 
-  let navigateToURL = null;
+  //if plugin is not enabled quit processing
+  if (!_enabled) {
+    sendResponse({received: true});
+    return;
+  }
 
-  if (request.patientId && request.patientId != _patientId && _enabled) {
+  //if the message is a patient ID
+  if (request.patientId && request.patientId != _patientId) {
     log("Received new Patient Id, updating storage");
     _patientId = request.patientId;
-    navigateToURL = MEDVIEW_PATIENT_URL + _patientId;
+
+    //Make API call to pacs to retrieve last study for patient.
+    fetch(MEDVIEW_API_URL + _patientId)
+      //response should be JSON formated object with fetch wrapper.
+      .then(function(response) {
+        console.dir(response);
+        if (!response.ok) {
+          throw Error(response.statusText);
+        }
+        return response.json();
+      }).then(function(patientArray) {
+        console.dir(patientArray);
+        //Get the first patient, first exam study ID
+        if (patientArray.length && patientArray[0].Exams && patientArray[0].Exams.length && patientArray[0].Exams[0].Study && patientArray[0].Exams[0].Study.StudyID) {
+          _studyId = patientArray[0].Exams[0].Study.StudyID;
+          log("Found Study ID: " + _studyId + ", Storing and navigating to study.");
+          updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
+        }
+      }).catch(function(error) {
+        log("Unable to search with API, falling back to manual update by patient");
+        updateOrInsertTab(MEDVIEW_PATIENT_URL + _patientId);
+      });
   }
 
-  if (request.studyId && request.studyId != _studyId && _enabled) {
+  //If message contains a studyId
+  if (request.studyId && request.studyId != _studyId) {
     log("Received new Study Id, updating storage");
     _studyId = request.studyId;
-    navigateToURL = MEDVIEW_STUDY_URL + _studyId;
-  }
-
-  if (navigateToURL) {
     log("Updating Medview Tab with new URL");
-    updateOrInsertTab(navigateToURL);
+    updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
   }
 
   sendResponse({received: true});
