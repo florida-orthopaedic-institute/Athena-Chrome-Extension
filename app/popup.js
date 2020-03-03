@@ -7,7 +7,7 @@ chrome.storage.sync.get(['enabled'], function(result) {
 });
 
 enabledCheckBox.onclick = (element) => {
-    chrome.runtime.sendMessage({ enabled: enabledCheckBox.checked }, () => {
+    chrome.runtime.sendMessage({ enabled: enabledCheckBox.checked, source: "extension" }, () => {
         log("Plugin is enabled: " + enabledCheckBox.checked);
     });
 };

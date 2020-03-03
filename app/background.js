@@ -5,9 +5,11 @@ const MEDVIEW_MATCH_URL = MEDVIEW_URL + "*";
 const ATHENA_MATCH_URL = ATHENA_URL + "*";
 
 const MEDVIEW_STUDY_URL = MEDVIEW_URL + "accessnet/imageweb/ExamLoad.aspx?ExamID=";
+//const MEDVIEW_STUDY_URL = MEDVIEW_URL + "accessnet/imageweb/ExamLoad.aspx?ExamID={ExamID}&StartPage=Series&PatientID={PatientID}";
 const MEDVIEW_PATIENT_URL = MEDVIEW_URL + "accessnet/imageweb/ExamLoad.aspx?PatientID=";
 
 const MEDVIEW_API_URL = 'https://pacs.floridaortho.com/accessnet/api/ExamApi/ExamSearch?PatientId=';
+const FOI_EXAM_REGEX = /18802$/
 
 var _studyId = null;  //The Current Study Loaded in Medview
 var _patientId = null; //The Current Patient Loaded in Medview and Athena
@@ -16,7 +18,7 @@ var _athenaTab = null;
 var _enabled = true; //Boolean that controls if navigation occurs
 
 
-///On receipt of a enabled storage request, update the local variable.
+///On receipt of an enabled storage request, update the local variable.
 chrome.storage.sync.get(['enabled'], function(result) {
   log("The plugin is currently " + result ? "enabled" : "disabled");
   _enabled = result;
@@ -44,7 +46,16 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 
 //When a message is received by the background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  log("Received message from " + (sender.tab ? sender.tab.url : "the extension"));
+  log("Received message from " + ((sender.tab ? sender.tab.url : "the extension") + ", tab id: " + sender.tab.id));
+
+  //register tab owner
+  switch (request.source) {
+    case "Medview": _medviewTab = sender.tab; break;
+    case "Athena": _athenaTab = sender.tab; break;
+    case "Extension": break;
+    default: break;
+  }
+
 
   //If it is an enabled update
   if (typeof request.enabled === 'boolean') {
@@ -63,38 +74,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   //if the message is a patient ID
   if (request.patientId && request.patientId != _patientId) {
-    log("Received new Patient Id, updating storage");
+    log("Received new Patient ID: " + request.patientId + " from source: " + request.source + ", updating storage");
     _patientId = request.patientId;
 
-    //Make API call to pacs to retrieve last study for patient.
-    fetch(MEDVIEW_API_URL + _patientId)
-      //response should be JSON formated object with fetch wrapper.
-      .then(function(response) {
-        console.dir(response);
-        if (!response.ok) {
-          throw Error(response.statusText);
-        }
-        return response.json();
-      }).then(function(patientArray) {
-        console.dir(patientArray);
-        //Get the first patient, first exam study ID
-        if (patientArray.length && patientArray[0].Exams && patientArray[0].Exams.length && patientArray[0].Exams[0].Study && patientArray[0].Exams[0].Study.StudyID) {
-          _studyId = patientArray[0].Exams[0].Study.StudyID;
-          log("Found Study ID: " + _studyId + ", Storing and navigating to study.");
-          updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
-        }
-      }).catch(function(error) {
-        log("Unable to search with API, falling back to manual update by patient");
-        updateOrInsertTab(MEDVIEW_PATIENT_URL + _patientId);
-      });
+    if (request.source == "Athena") {
+      //Make API call to pacs to retrieve last study for patient.
+      fetch(MEDVIEW_API_URL + _patientId)
+        //response should be JSON formated object with fetch wrapper.
+        .then(function(response) {
+          console.dir(response);
+          if (!response.ok) {
+            throw Error(response.statusText);
+          }
+          return response.json();
+        }).then(function(patientArray) {
+          console.dir(patientArray);
+          //Get the first patient, first exam study ID
+          var studyId = patientArray[0].Exams[0].Study.StudyID;
+          //updateOrInsertTab(
+          //    MEDVIEW_STUDY_URL.replace("{ExamID}", _studyId).replace("{PatientID}", _patientId));
+
+
+          if (FOI_EXAM_REGEX.test(studyId)) {
+            _studyId = studyId;
+            log("Found Study ID: " + _studyId + ", Storing and navigating to study.");
+            updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
+          } else {
+            _studyId = null;
+            log("Study ID not from FOI, may result in duplicates, presenting all patient exams");
+            updateOrInsertTab(MEDVIEW_PATIENT_URL + _patientId);
+          }
+        }).catch(function(error) {
+          log("Unable to search with API, presenting all patient exams, " + error.message);
+          updateOrInsertTab(MEDVIEW_PATIENT_URL + _patientId);
+        });
+    }
   }
 
   //If message contains a studyId
+  //and sent from Athena
   if (request.studyId && request.studyId != _studyId) {
-    log("Received new Study Id, updating storage");
+    
+    log("Received new Study ID: " + request.studyId + " from source: " + request.source + ", updating storage");
     _studyId = request.studyId;
-    log("Updating Medview Tab with new URL");
-    updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
+    if (request.source == "Athena") {
+      log("Updating Medview Tab with new URL");
+      updateOrInsertTab(MEDVIEW_STUDY_URL + _studyId);
+    }
   }
 
   sendResponse({received: true});
