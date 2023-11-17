@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "FOI Athena Extension",
-    "version": "1.1",
+    "version": "1.2",
     "description": "Supplement AthenaNet for Florida Orthopaedic Institute by providing synchronization between AthenaNet and Medivew web applications",
     "background": {
         "service_worker": "background.js"
