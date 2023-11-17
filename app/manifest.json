@@ -1,13 +1,10 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "FOI Athena Extension",
     "version": "1.1",
     "description": "Supplement AthenaNet for Florida Orthopaedic Institute by providing synchronization between AthenaNet and Medivew web applications",
     "background": {
-        "scripts": [
-            "background.js"
-        ],
-        "persistent": false
+        "service_worker": "background.js"
     },
     "permissions": ["tabs", "storage"],
     "icons": {
@@ -29,7 +26,7 @@
             "js": ["medview/contentScript.js"]
         }
     ],
-    "browser_action": {
+    "action": {
         "default_popup": "popup.html",
         "default_icon": {
             "16": "images/logo16.png",
