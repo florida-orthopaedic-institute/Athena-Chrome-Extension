@@ -19,10 +19,10 @@ var _enabled = true; //Boolean that controls if navigation occurs
 
 
 ///On receipt of an enabled storage request, update the local variable.
-chrome.storage.sync.get(['enabled'], function(result) {
-  log("The plugin is currently " + result ? "enabled" : "disabled");
-  _enabled = result;
-});
+// chrome.storage.sync.get(['enabled'], function(result) {
+//   log("The plugin is currently " + result ? "enabled" : "disabled");
+//   _enabled = result;
+// });
 
 //When a chrome tab is removed
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
@@ -46,7 +46,7 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 
 //When a message is received by the background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  log("Received message from " + ((sender.tab ? sender.tab.url : "the extension") + ", tab id: " + sender.tab.id));
+  //log("Received message from " + ((sender.tab ? sender.tab.url : "the extension") + ", tab id: " + sender.tab.id));
 
   //register tab owner
   switch (request.source) {
@@ -60,10 +60,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   //If it is an enabled update
   if (typeof request.enabled === 'boolean') {
     log("Changing Enabled State to " + request.enabled);
-    chrome.storage.local.set({enabled: request.enabled}, function() {
-      log("Set Enabled to " + request.enabled);
-      _enabled = request.enabled;
-    });
+    _enabled = request.enabled;
   }
 
   //if plugin is not enabled quit processing

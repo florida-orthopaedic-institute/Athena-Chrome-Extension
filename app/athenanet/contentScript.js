@@ -4,21 +4,23 @@ let patientIdFound = false;
 
 if (window.name == 'frMain') {
     let bannerContainer = window.document.querySelector('#nimbus-banner-container');
-    log("banner container found");
-    let autoStarts = bannerContainer.querySelectorAll('.autostart');
-    if (autoStarts && autoStarts.length) {
-        Array.prototype.forEach.call(autoStarts, function(autoStart) {
-            log("searching autostart data for a patient id")
-            let dataProps = autoStart.getAttribute('data-props');
-            if (dataProps && !patientIdFound) {
-                log("processing dataProps")
-                let data = JSON.parse(dataProps);
-                if (data && data.patientId) {
-                    patientIdFound = true;
-                    messagePatientId(data.patientId);
+    if (bannerContainer) {
+        log("banner container found");
+        let autoStarts = bannerContainer.querySelectorAll('.autostart');
+        if (autoStarts && autoStarts.length) {
+            Array.prototype.forEach.call(autoStarts, function(autoStart) {
+                log("searching autostart data for a patient id")
+                let dataProps = autoStart.getAttribute('data-props');
+                if (dataProps && !patientIdFound) {
+                    log("processing dataProps")
+                    let data = JSON.parse(dataProps);
+                    if (data && data.patientId) {
+                        patientIdFound = true;
+                        messagePatientId(data.patientId);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     let bannerShadowContainer = window.document.querySelector('#nimbus-banner-shadow-dom-container');
