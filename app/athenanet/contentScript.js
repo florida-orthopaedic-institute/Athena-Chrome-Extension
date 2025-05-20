@@ -1,62 +1,58 @@
-console.log("FOI_Athena: loading athenanet contentScript on " + (window.name ?? "unnamed window"));
+// This script runs in the context of the AthenaNet page
+// It is injected by the extension and has access to the DOM of the page
+// It is used to extract the patient ID from the page and send it to the background script
+
+// Athena patient ID is a 7 digit number, starting with a #
+// Example: #1234567
+// The patient ID is stored in a shadow DOM element with the class 'pb_c_patient-id-module__detail'
+// The patient ID is extracted from the innerHTML of the element
+// The patient ID is sent to the background script using chrome.runtime.sendMessage
+// The background script will then store the patient ID in the local storage
+// The patient ID is stored in the local storage with the key 'patientId'
+// The practice ID is extracted from the URL of the page
+// The practice ID is the first part of the URL after the domain name
+// Example: https://athenanet.athenahealth.com/1234567/Patient/1234567
+// The practice ID is stored in the local storage with the key 'practiceId'
+
 const pidRegex = /^#([0-9][0-9][0-9][0-9][0-9][0-9][0-9])$/
-let patientIdFound = false;
 
 if (window.name == 'frMain') {
-    let bannerContainer = window.document.querySelector('#nimbus-banner-container');
-    if (bannerContainer) {
-        log("banner container found");
-        let autoStarts = bannerContainer.querySelectorAll('.autostart');
-        if (autoStarts && autoStarts.length) {
-            Array.prototype.forEach.call(autoStarts, function(autoStart) {
-                log("searching autostart data for a patient id")
-                let dataProps = autoStart.getAttribute('data-props');
-                if (dataProps && !patientIdFound) {
-                    log("processing dataProps")
-                    let data = JSON.parse(dataProps);
-                    if (data && data.patientId) {
-                        patientIdFound = true;
-                        messagePatientId(data.patientId);
-                    }
-                }
-            });
-        }
-    }
+    let bannerShadowContainers = window.document.querySelectorAll('#nimbus-banner-shadow-dom-container, .autostart');
+    bannerShadowContainers.forEach( function(bannerShadowContainer) {
+        if (bannerShadowContainer.shadowRoot) {
+            log("found patient ID container");
 
-    let bannerShadowContainer = window.document.querySelector('#nimbus-banner-shadow-dom-container');
-    if (!patientIdFound && bannerShadowContainer && bannerShadowContainer.shadowRoot) {
-        log("banner shadow container found with shadowRoot");
-        
-        var observer = new MutationObserver(function(mutations) {
-            log("change to bannerShadowContainer detected");
-            
-            let details = bannerShadowContainer.shadowRoot.querySelectorAll('.pb_c_patient-banner-component__detail');
-            if (details && details.length) {
-                log("searching banner details for a patient id");
-                Array.prototype.forEach.call(details, function(detail) {
+            var observer = new MutationObserver(function(mutations) {
+                log("change to patient ID detected, searching for a patient id");
+                let details = bannerShadowContainer.shadowRoot.querySelectorAll('.pb_c_patient-id-module__detail');
+                details.forEach(function(detail) {                    
                     var matches = detail.innerHTML.trim().match(pidRegex);
-                    log(matches);
                     if (matches && matches.length == 2) {
-                        messagePatientId(matches[1]);
+                        storePatientId(matches[1], window?.location?.pathname?.split('/')[1]);
                     }
-                })
-            } else {
-                log("neither autostart or banner details were found");
-            }
-        });
-
-        observer.observe(bannerShadowContainer.shadowRoot, {childList: true});
-    }    
-}
-
-function messagePatientId(patientId) {
-    log("Messaging Patient ID: " + patientId);
-    chrome.runtime.sendMessage({patientId: patientId, source: "Athena"}, () => {
-        log("Patient ID " + patientId + " sent");
+                });
+            });
+            observer.observe(bannerShadowContainer.shadowRoot, {childList: true});
+        }
     });
 }
 
-function log(message) {
-    console.log("FOI_Athena: " + message);
+async function storePatientId(patientId, practiceId) {
+    log("Messaging Patient ID: " + patientId + " and Practice ID: " + practiceId);
+    await chrome.runtime.sendMessage({
+        patientId: patientId,
+        practiceId: practiceId
+    });
 }
 
+function log(message, obj) {
+    if (typeof message == 'string') {
+        console.log("FOI_Athena: " + message);
+    } else {
+        console.dir(message);
+    }
+
+    if (obj) {
+        console.dir(obj);
+    }
+}

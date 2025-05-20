@@ -1,12 +1,21 @@
 {
     "manifest_version": 3,
     "name": "FOI Athena Extension",
-    "version": "1.2",
-    "description": "Supplement AthenaNet for Florida Orthopaedic Institute by providing synchronization between AthenaNet and Medivew web applications",
+    "version": "2.3.1",
+    "description": "Supplement AthenaNet for Orthopaedic Solutions Management and its Affiliates synchronizing patients in PACS.",
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
-    "permissions": ["tabs"],
+    "permissions": [
+        "tabs",
+        "webRequest",
+        "webRequestAuthProvider",
+        "storage"
+    ],
+    "host_permissions": [
+        "https://osm.efferenthealth.net/fhir/*"
+    ],
     "icons": {
         "16": "images/logo16.png",
         "48": "images/logo48.png",
@@ -15,15 +24,19 @@
     },
     "content_scripts": [
         {
-            "matches":["https://athenanet.athenahealth.com/*"],
+            "matches":["https://athenanet.athenahealth.com/18802/*"],
             "run_at": "document_idle",
-            "js": ["athenanet/contentScript.js"],
+            "js": [
+                "athenanet/contentScript.js"
+            ],
             "all_frames": true
         },
         {
-            "matches":["https://pacs.floridaortho.com/*"],
+            "matches":["https://osm.efferenthealth.net/*"],
             "run_at": "document_idle",
-            "js": ["medview/contentScript.js"]
+            "js": [
+                "efferent/contentScript.js"
+            ]
         }
     ],
     "action": {
