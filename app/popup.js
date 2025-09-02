@@ -9,10 +9,10 @@ import { log } from './helper.js'
 let _efferentEnabled = true; //Controls if Efferent Tab is Updated after patient navigation
 
 let efferentCheckbox = null;
-let v1Header = null;
-let v1History = null;
+let versionHeaders = null;
 
-const initCache = chrome.storage.sync.get().then((items) => {
+// Initialize the Chrome Cache
+chrome.storage.sync.get().then((items) => {
     log(items);
     if (items && items.efferentEnabled != null) {
         if (items.efferentEnabled != _efferentEnabled) {
@@ -25,16 +25,7 @@ const initCache = chrome.storage.sync.get().then((items) => {
     loadOptionValues();
 });
 
-
-document.addEventListener('DOMContentLoaded', () => {
-    efferentCheckbox = document.getElementById('efferentCheckbox');
-    efferentCheckbox.addEventListener("click", switchEfferent);
-    log("Efferent Enabled: " + _efferentEnabled);
-    v1Header = document.getElementById('v1Header');
-    v1Header.addEventListener("click", switchV1Visibilty);
-    v1History = document.getElementById('v1History');
-}, false);
-
+// Listen for changes in Chrome storage and update the UI accordingly
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         if (changes.efferentEnabled && changes.efferentEnabled.newValue != _efferentEnabled) {
@@ -45,6 +36,24 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     }
 });
 
+// Once DOM is loaded update Efferent Checkbox and Version History
+document.addEventListener('DOMContentLoaded', () => {
+    efferentCheckbox = document.getElementById('efferentCheckbox');
+    efferentCheckbox.addEventListener("click", switchEfferent);
+    log("Efferent Enabled: " + _efferentEnabled);
+
+    versionHeaders = document.querySelectorAll('h3.version');
+    versionHeaders.forEach(header => {
+        header.style.cursor = 'pointer';
+        header.addEventListener("click", () => switchVisibility(header.nextElementSibling));
+    });
+}, false);
+
+
+
+ /**
+  * Switches the state of the Efferent tab based on user interaction.
+  */
 function switchEfferent() {
     if (efferentCheckbox.checked) {
         log("Switching Efferent Enabled from " + _efferentEnabled + " to true");
@@ -56,14 +65,21 @@ function switchEfferent() {
     chrome.storage.sync.set({ efferentEnabled: _efferentEnabled });
 }
 
-function switchV1Visibilty() {
-    if (v1History.style.display === 'none') {
-        v1History.style.display = 'block';
+/**
+ * Switches the visibility of a given container element.
+ * @param {*} container - The container element to toggle visibility for.
+ */
+function switchVisibility(container) {
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
     } else {
-        v1History.style.display = 'none';
+        container.style.display = 'none';
     }
 }
 
+/**
+ * Loads the option values from the Chrome storage and updates the UI accordingly.
+ */
 function loadOptionValues() {
     efferentCheckbox.checked = _efferentEnabled;
 }

@@ -1,10 +1,13 @@
-// this script logs application messages to the console
-// it prepends the message with the string "FOI_Athena"
-// and logs the object if provided
 
+/**
+ * Logs messages with a custom prefix for easier troubleshooting.
+ *
+ * @param {string|object} message - The message to log.
+ * @param {object} [obj] - Optional additional object to log.
+ */
 export function log(message, obj) {
     if (typeof message == 'string') {
-        console.log("FOI_Athena: " + message);
+        console.log("Athena-Chrome-Extension: " + message);
     } else {
         console.dir(message);
     }

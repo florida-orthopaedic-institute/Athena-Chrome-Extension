@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "FOI Athena Extension",
-    "version": "2.3.1",
+    "version": "2.4.0",
     "description": "Supplement AthenaNet for Orthopaedic Solutions Management and its Affiliates synchronizing patients in PACS.",
     "background": {
         "service_worker": "background.js",
